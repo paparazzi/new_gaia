@@ -7,6 +7,6 @@ This system as been initally developed as a student projet at ENAC and is lookin
 
 More information:
 
-- http://paparazzi.enac.fr for the Paparazzi UAS project
-- http://paparazzi.enac.fr/wiki/New_Gaia_ for this project documentation
+- http://paparazziuav.org for the Paparazzi UAS project
+- http://paparazziuav.org/wiki/New_Gaia for this project documentation
 
