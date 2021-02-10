@@ -34,6 +34,7 @@ public class IvyListener {
 
     private ArrayList<Integer> aircraftsList = new ArrayList<Integer>(5);
     private java.util.AbstractMap<Integer,String>  aircraftsFligthPlan = new HashMap<Integer, String>(5);
+    private java.util.AbstractMap<String, Integer>  aircraftsIdByName = new HashMap<String, Integer>(5); // find ID from name
 
     private int DEFAULT_ID = 9999;
 
@@ -95,17 +96,24 @@ public class IvyListener {
         /**
          * Main aim : relaying the wind request
          */
-        bus.bindMsg("sim (.*) WORLD_ENV_REQ (.*)", new IvyMessageListener () {
+        bus.bindMsg("[^ ]* (.*) WORLD_ENV_REQ (.*)", new IvyMessageListener () {
             @Override
             public void receive(IvyClient client, String[] args) {
+                String appName = client.getApplicationName();
                 String nb_req = args[0];
                 String buffer[] = new String[6];
                 SpaceCoordinates coords = new SpaceCoordinates(0.0, 0.0, 0.0);
                 if (args.length>1) {
                     buffer = args[1].split("\\u0020");
-                    coords.setX(Double.parseDouble(buffer[3]));
-                    coords.setY(Double.parseDouble(buffer[4]));
-                    coords.setZ(Double.parseDouble(buffer[5]));
+                    if (appName.endsWith("_NPS")) { // NED frame
+                        coords.setX(Double.parseDouble(buffer[4]));
+                        coords.setY(Double.parseDouble(buffer[3]));
+                        coords.setZ(-Double.parseDouble(buffer[5]));
+                    } else { // ENU frame
+                        coords.setX(Double.parseDouble(buffer[3]));
+                        coords.setY(Double.parseDouble(buffer[4]));
+                        coords.setZ(Double.parseDouble(buffer[5]));
+                    }
                     try {
                         SpaceCoordinates res;
                         try {
@@ -128,9 +136,19 @@ public class IvyListener {
                                 + map.getTimeScale()
                                 + " "
                                 + "1"); //dispo GPS (=1)
-                        int airCraftId = Integer.valueOf(client.getApplicationName().substring(14));
+                        String appSplit[] = appName.split(" ");
+                        int airCraftId = -1;
+                        if (appSplit.length == 1) {
+                            String n = appSplit[0].substring(0, appSplit[0].length()-4); // remove trailing "_NPS"
+                            if (aircraftsIdByName.containsKey(n)) {
+                                airCraftId = aircraftsIdByName.get(n);
+                            }
+                        }
+                        else if (appSplit.length == 3) {
+                            airCraftId = Integer.valueOf(appSplit[2]);
+                        }
                         if(aircraftsList.contains(airCraftId)){
-                            mapControler.setUAVCoordinates(Integer.valueOf(client.getApplicationName().substring(14)), coords);
+                            mapControler.setUAVCoordinates(airCraftId, coords);
                         }
                     } catch (IvyException ex) {
                         bus.stop();
@@ -143,12 +161,11 @@ public class IvyListener {
 
 
 
-
         /*
          * Identifies the xml flight plan used and loads the precise 
          * coordinates of the point "HOME".
          */
-        bus.bindMsg(DEFAULT_ID + " ground CONFIG ([1-9]+) ([^ ]+)", new IvyMessageListener() {
+        bus.bindMsg(DEFAULT_ID + " ground CONFIG ([1-9]+) ([^ ]+) [^ ]+ [^ ]+ [^ ]+ [^ ]+ ([^ ]+)", new IvyMessageListener() {
 
             @Override
             public void receive(IvyClient client, String[] args) {
@@ -158,6 +175,7 @@ public class IvyListener {
                     }
                     if (!aircraftsFligthPlan.containsKey(Integer.valueOf(args[0]))) {
                         aircraftsFligthPlan.put(Integer.valueOf(args[0]), args[1]);
+                        aircraftsIdByName.put(args[2], Integer.valueOf(args[0]));
                     }
                     if (!aircraftsList.isEmpty()) {
                         mapControler.setHomePath(aircraftsFligthPlan.get(aircraftsList.get(0)));
