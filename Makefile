@@ -25,7 +25,7 @@ run :
 download_jars:
 	mkdir -p jars
 	cd jars && \
-	wget http://www.eei.cena.fr/products/ivy/download/packages/ivy-java-1.2.6.jar && \
+	wget --no-check-certificate https://www.eei.cena.fr/products/ivy/download/packages/ivy-java-1.2.6.jar && \
 	ln -s ivy-java-1.2.6.jar ivy-java.jar && \
 	wget http://jdom.org/dist/binary/jdom-2.0.6.zip && \
 	unzip jdom-2.0.6.zip && \
